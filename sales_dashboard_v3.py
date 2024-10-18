@@ -64,10 +64,14 @@ def calculate_recent_activation_metrics(df, activation_month, activation_year, m
 # Function to load data
 @st.cache_data  # This caches the data to make it load faster
 def load_data(file):
-    
-    # Columns being used:
-    ## Dealer Name, Dealer State, Sale Date, Dealer Sign up Date, Parent Product Type, Product Type
-    df = pd.read_excel(file)  # or pd.read_csv(file) #####Need to write in to handle both. 
+    file_extension = file.name.split('.')[-1].lower()
+    if file_extension == 'csv':
+        df = pd.read_csv(file)
+    elif file_extension in ['xls', 'xlsx']:
+        df = pd.read_excel(file)
+    else:
+        st.error(f"Unsupported file format: {file_extension}")
+        return None
     
     # Convert date columns to datetime
     df['Sale Date'] = pd.to_datetime(df['Sale Date'])
