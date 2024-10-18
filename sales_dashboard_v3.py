@@ -236,7 +236,47 @@ if uploaded_file is not None:
         )
         
         st.plotly_chart(fig, use_container_width=True)
+
+        # Additional metrics
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.metric("Total New Dealers", len(new_dealers_df['Dealer Name'].unique()))
+            
+        with col2:
+            active_new_dealers = len(new_dealers_df[
+                new_dealers_df['Sale Date'] >= (today - pd.Timedelta(days=30))
+            ]['Dealer Name'].unique())
+            st.metric("Active New Dealers (Last 30 Days)", active_new_dealers)
+            
+        with col3:
+            avg_sales_per_dealer = new_dealers_df.groupby('Dealer Name').size().mean()
+            st.metric("Avg Sales per New Dealer", f"{avg_sales_per_dealer:.1f}")
+        
+        # Create summary DataFrame for new dealers
+        dealer_metrics = new_dealers_df.groupby('Dealer Name').agg({
+            'Sale Date': ['count', 'min'],
+            'Dealer Sign up Date': 'first',
+            'Dealer State': 'first'
+        }).reset_index()
+        
+        # Rename columns for clarity
+        dealer_metrics.columns = ['Dealer Name', 'Total Sales', 'First Sale Date', 'Activation Date', 'State']
+        
+        # Calculate product type specific sales
+        vsc_sales = new_dealers_df[new_dealers_df['Parent Product Type'] == 'VSC'].groupby('Dealer Name')['Sale Date'].count()
+        ancillary_sales = new_dealers_df[new_dealers_df['Parent Product Type'] == 'Ancillary'].groupby('Dealer Name')['Sale Date'].count()
+        
+        dealer_metrics['VSC Sales'] = dealer_metrics['Dealer Name'].map(vsc_sales).fillna(0)
+        dealer_metrics['Ancillary Sales'] = dealer_metrics['Dealer Name'].map(ancillary_sales).fillna(0)
+        
+        # Reorder columns
+        dealer_metrics = dealer_metrics[[
+            'Dealer Name', 'Total Sales', 'VSC Sales', 'Ancillary Sales', 
+            'Activation Date', 'First Sale Date', 'State'
+        ]]
         # Display the summary table
+        
         st.subheader("New Dealer Details")
         st.dataframe(dealer_metrics.style.format({
             'Total Sales': '{:,.0f}',
@@ -324,15 +364,7 @@ if uploaded_file is not None:
             'Activation Date', 'First Sale Date', 'State'
         ]]
         
-        # Display the summary table
-        st.subheader("New Dealer Details")
-        st.dataframe(dealer_metrics.style.format({
-            'Total Sales': '{:,.0f}',
-            'VSC Sales': '{:,.0f}',
-            'Ancillary Sales': '{:,.0f}',
-            'Activation Date': '{:%m/%d/%Y}',
-            'First Sale Date': '{:%m/%d/%Y}'
-        }))
+        
 
 else:
     st.info("Please upload your sales data file to begin analysis")
